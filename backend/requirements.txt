@@ -4,3 +4,7 @@ python-dotenv>=1.0
 google-genai>=1.0
 requests>=2.31
 tweepy>=4.14
+
+pymysql
+cryptography
+gunicorn
