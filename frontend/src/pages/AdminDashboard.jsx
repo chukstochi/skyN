@@ -1,0 +1,157 @@
+import { useEffect, useState } from 'react'
+import * as adminApi from '../services/adminApi.js'
+import { UnauthorizedError } from '../services/adminApi.js'
+import AdminTabs from '../components/admin/AdminTabs.jsx'
+import ArticleEditor from '../components/admin/ArticleEditor.jsx'
+import SourceManager from '../components/admin/SourceManager.jsx'
+
+export default function AdminDashboard({ onSignedOut }) {
+  const [tab, setTab] = useState('draft')
+  const [articles, setArticles] = useState([])
+  const [sources, setSources] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const [fetching, setFetching] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const reload = () => setReloadKey((k) => k + 1)
+
+  function handleError(err) {
+    if (err instanceof UnauthorizedError) onSignedOut()
+    else setMessage(err.message || 'Something went wrong. Try again.')
+  }
+
+  // Load the list for the current tab (and again whenever reload() is called)
+  useEffect(() => {
+    let cancelled = false
+    const request = tab === 'sources' ? adminApi.getSources() : adminApi.getArticles(tab)
+    request
+      .then((data) => {
+        if (cancelled) return
+        if (tab === 'sources') setSources(data || [])
+        else setArticles(data || [])
+        setLoading(false)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setLoading(false)
+        handleError(err)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, reloadKey])
+
+  function changeTab(next) {
+    if (next === tab) return
+    setLoading(true)
+    setMessage('')
+    setTab(next)
+  }
+
+  async function saveArticle(id, fields) {
+    try {
+      await adminApi.updateArticle(id, fields)
+      setMessage('Saved.')
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  async function changeStatus(id, fields, action) {
+    try {
+      await adminApi.updateArticle(id, fields)
+      await adminApi.articleAction(id, action)
+      setMessage(action === 'publish' ? 'Published.' : 'Updated.')
+      reload()
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  async function deleteArticle(id) {
+    if (!window.confirm('Delete this article?')) return
+    try {
+      await adminApi.deleteArticle(id)
+      reload()
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  async function fetchNow() {
+    setFetching(true)
+    setMessage('Fetching and rewriting… this can take a minute.')
+    try {
+      const r = await adminApi.fetchNow()
+      const errors = (r && r.errors) || []
+      setMessage(
+        r && r.skipped
+          ? 'A fetch is already running.'
+          : `${r ? r.added : 0} new drafts added.${
+              errors.length ? ' Issues: ' + errors.slice(0, 3).join(' | ') : ''
+            }`
+      )
+      reload()
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  async function addSource(source) {
+    try {
+      await adminApi.addSource(source)
+      reload()
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    }
+  }
+
+  async function removeSource(id) {
+    try {
+      await adminApi.removeSource(id)
+      reload()
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  let content
+  if (loading) {
+    content = <p className="admin-note">Loading…</p>
+  } else if (tab === 'sources') {
+    content = <SourceManager sources={sources} onAdd={addSource} onRemove={removeSource} />
+  } else if (articles.length) {
+    content = articles.map((a) => (
+      <ArticleEditor
+        key={a.id}
+        article={a}
+        status={tab}
+        onSave={saveArticle}
+        onChangeStatus={changeStatus}
+        onDelete={deleteArticle}
+      />
+    ))
+  } else {
+    content = <p className="admin-note">Nothing here. Add sources, then choose Fetch &amp; rewrite now.</p>
+  }
+
+  return (
+    <div className="admin">
+      <div className="admin-bar">
+        <h1>Sky N news · Review desk</h1>
+        <button className="primary" onClick={fetchNow} disabled={fetching}>
+          Fetch &amp; rewrite now
+        </button>
+      </div>
+      <AdminTabs tab={tab} onChange={changeTab} />
+      <p className="admin-note">{message}</p>
+      {content}
+    </div>
+  )
+}

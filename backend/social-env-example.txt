@@ -1,0 +1,16 @@
+# Add these to backend\.env (only the ones you use)
+SITE_URL=https://your-public-website.com
+
+# Facebook Page + Instagram (same Page access token)
+FB_PAGE_ID=
+FB_PAGE_TOKEN=
+IG_USER_ID=
+
+# X (Twitter)
+X_API_KEY=
+X_API_SECRET=
+X_ACCESS_TOKEN=
+X_ACCESS_SECRET=
+
+# Make.com or Zapier webhook (for TikTok, LinkedIn, Telegram, etc.)
+SOCIAL_WEBHOOK_URL=

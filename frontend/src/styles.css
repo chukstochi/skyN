@@ -1,0 +1,736 @@
+/* =========================================================
+   Sky N news: the single stylesheet for every page and component.
+   Sections follow the component names. Search for "=== Name ===".
+   ========================================================= */
+
+/* === Base === */
+:root {
+  --o: #ff6a00;
+  --ink: #1a1d23;
+  --mut: #6b7280;
+  --bg: #f6f7f9;
+  --line: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--o);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}
+
+.w {
+  max-width: 1180px;
+  margin: auto;
+  padding: 0 14px;
+}
+
+.btn {
+  background: var(--o);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font: 600 14px inherit;
+  cursor: pointer;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.tag {
+  background: var(--o);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.meta {
+  color: var(--mut);
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.status {
+  padding: 40px 0;
+  color: var(--mut);
+}
+
+.status a {
+  color: var(--o);
+}
+
+/* === TopBar === */
+.top {
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+.top .w {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* === Header === */
+header {
+  background: #fff;
+}
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px;
+}
+
+.logo {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.logo b {
+  color: var(--o);
+}
+
+.hd input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 18px;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  font: inherit;
+}
+
+/* === CategoryNav === */
+nav {
+  background: var(--o);
+}
+
+nav .w {
+  display: flex;
+  overflow-x: auto;
+}
+
+nav a {
+  color: #fff;
+  padding: 13px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+nav a.on {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* === Hero (lead story + side stories) === */
+.hero {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.big {
+  position: relative;
+  min-height: 380px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #333 center/cover;
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+}
+
+.big div {
+  padding: 26px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  width: 100%;
+}
+
+.big h2 {
+  font-size: 30px;
+  margin: 8px 0;
+}
+
+.meta-light {
+  color: #ddd;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mini {
+  display: flex;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  flex: 1;
+}
+
+.mini i,
+.card i,
+.tr i {
+  background: #ddd center/cover;
+  border-radius: 6px;
+  flex: none;
+  display: block;
+}
+
+.mini i {
+  width: 110px;
+}
+
+.mini h4 {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+/* === Home layout (main column + sidebar) === */
+.cols {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+h3.sec {
+  border-left: 4px solid var(--o);
+  padding-left: 10px;
+  margin: 18px 0 12px;
+}
+
+/* === ArticleGrid / ArticleCard === */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.card i {
+  height: 150px;
+  border-radius: 0;
+}
+
+.card div {
+  padding: 12px;
+}
+
+.card h4 {
+  margin: 8px 0;
+  font-size: 15px;
+}
+
+.card p {
+  color: var(--mut);
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+/* === Sidebar boxes (TrendingBox, NewsletterBox) === */
+.box {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.box-title {
+  margin: 0;
+}
+
+.tr {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tr i {
+  width: 56px;
+  height: 44px;
+}
+
+.box input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 8px 0;
+  font: inherit;
+}
+
+/* === Footer === */
+footer {
+  background: var(--ink);
+  color: #aaa;
+  margin-top: 40px;
+  padding: 28px 0;
+  font-size: 13px;
+}
+
+footer .logo {
+  color: #fff;
+}
+
+/* === Footer socials === */
+footer .socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+footer .socials a {
+  border: 1px solid #3a3f4a;
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+footer .socials a:hover {
+  background: var(--o);
+  border-color: var(--o);
+}
+
+/* === Article page === */
+.article-page {
+  background: #fff;
+  max-width: 720px;
+  margin: 30px auto;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.article-page img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.article-page p {
+  line-height: 1.7;
+}
+
+.article-page .back {
+  display: block;
+  margin-bottom: 14px;
+  color: var(--mut);
+  font-size: 13px;
+}
+
+.article-page .source-link {
+  color: var(--o);
+}
+
+/* === Responsive === */
+.cols > *,
+.hero > * {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .cols {
+    grid-template-columns: 1fr;
+  }
+
+  .side {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mini {
+    flex: none;
+  }
+
+  .mini i {
+    width: 112px;
+    min-height: 84px;
+  }
+
+  .mini > div {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .mini h4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 6px 0 4px;
+  }
+
+  .big {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .top .w {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .top-date {
+    display: none;
+  }
+
+  .hd {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .logo {
+    font-size: 24px;
+    flex: 1;
+  }
+
+  .hd input {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .btn {
+    padding: 9px 14px;
+  }
+
+  nav a {
+    padding: 11px 12px;
+    font-size: 13px;
+  }
+
+  .big {
+    min-height: 240px;
+  }
+
+  .big div {
+    padding: 16px;
+  }
+
+  .big h2 {
+    font-size: 21px;
+    line-height: 1.25;
+  }
+
+  .big p {
+    display: none;
+  }
+
+  .mini i {
+    width: 96px;
+    min-height: 80px;
+  }
+
+  .mini h4 {
+    font-size: 13px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card i {
+    height: 180px;
+  }
+
+  .article-page {
+    margin: 0 -14px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    padding: 18px;
+  }
+
+  .article-page h1 {
+    font-size: 22px;
+    line-height: 1.3;
+  }
+
+  footer {
+    margin-top: 24px;
+  }
+}
+
+/* === Admin (route /admin: login, review desk, sources) === */
+.admin-wrap {
+  max-width: 980px;
+  margin: auto;
+  padding: 16px;
+}
+
+.admin-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.admin-bar h1 {
+  flex: 1;
+  font-size: 22px;
+  margin: 0;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.admin-login {
+  max-width: 320px;
+  margin: 15vh auto;
+}
+
+.admin-row {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-meta {
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.admin-meta a {
+  text-decoration: underline;
+}
+
+.admin-source {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin label {
+  display: block;
+}
+
+.admin input,
+.admin textarea,
+.admin select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+  margin: 4px 0 8px;
+}
+
+.admin textarea {
+  min-height: 200px;
+}
+
+.admin button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin .is-primary {
+  background: var(--o);
+  border-color: var(--o);
+  color: #fff;
+}
+
+.admin .is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.admin .is-danger {
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .admin-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+/* === Admin (login + review desk) === */
+.admin {
+  max-width: 980px;
+  margin: auto;
+  padding: 16px;
+}
+
+.admin button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin button.primary {
+  background: var(--o);
+  border-color: var(--o);
+  color: #fff;
+}
+
+.admin button.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.admin button.danger {
+  color: #b91c1c;
+}
+
+.admin button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.admin-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.admin-bar h1 {
+  flex: 1;
+  font-size: 22px;
+  margin: 0;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.admin-card .admin-bar {
+  margin-bottom: 0;
+}
+
+.admin label {
+  display: block;
+}
+
+.admin input,
+.admin textarea,
+.admin select {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+  margin: 4px 0 8px;
+}
+
+.admin textarea {
+  min-height: 200px;
+}
+
+.admin-row {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-note {
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.admin-source {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-login {
+  max-width: 320px;
+  margin: 15vh auto;
+}
+
+@media (max-width: 640px) {
+  .admin-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .admin-login {
+    margin-top: 8vh;
+  }
+}
