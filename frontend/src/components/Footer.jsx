@@ -10,7 +10,7 @@ import {
 } from 'react-icons/fa6'
 import { SOCIAL_LINKS } from '../constants.js'
 
-// Matches on the lowercase name from SOCIAL_LINKS. Unknown names fall back to text.
+//Matches on the lowercase name from SOCIAL_LINKS. Unknown names fall back to text.
 const ICONS = {
   facebook: FaFacebookF,
   x: FaXTwitter,
