@@ -113,9 +113,15 @@ def s_add():
 def s_del(i):
     db.q("DELETE FROM sources WHERE id=?", (i,), write=True); return jsonify(ok=1)
 
+# Starts the fetch in the background and returns straight away (avoids the gunicorn worker timeout).
+# Poll /api/admin/fetch/status for progress and the final {added, errors} result.
 @app.post("/api/admin/fetch")
 @admin
-def s_fetch(): return jsonify(fetcher.fetch_all())
+def s_fetch(): return jsonify(fetcher.start_fetch())
+
+@app.get("/api/admin/fetch/status")
+@admin
+def s_fetch_status(): return jsonify(fetcher.get_status())
 
 @app.get("/api/admin/stats")
 @admin

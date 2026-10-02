@@ -4,8 +4,11 @@ import db, ai
 
 AUTHORS = [a.strip() for a in os.getenv("AUTHORS", "Sky N Desk").split(",")]
 PER_SOURCE = int(os.getenv("STORIES_PER_SOURCE", 5))   # max new stories per source each fetch
-DELAY = float(os.getenv("DELAY_SECONDS", 5))           # pause between AI calls (free-tier friendly)
+DELAY = float(os.getenv("DELAY_SECONDS", 5))           # pause between successful AI calls (free-tier friendly)
 lock = threading.Lock()
+
+# Shared state so the admin UI can poll progress instead of waiting on one long request
+status = {"running": False, "started_at": None, "last": None}
 
 
 def slugify(t):
@@ -57,6 +60,18 @@ def best_image(e, link):
     return og_image(link) or upgrade(image_of(e))
 
 
+def is_rate_limit(ex):
+    s = str(ex)
+    return "429" in s or "RESOURCE_EXHAUSTED" in s or "quota" in s.lower()
+
+
+def is_fatal(ex):
+    """Errors that will repeat for every article (bad model, bad key). Stop instead of retrying them all."""
+    s = str(ex)
+    return any(k in s for k in ("NOT_FOUND", "no longer available", "PERMISSION_DENIED",
+                                "API key", "API_KEY_INVALID", "UNAUTHENTICATED"))
+
+
 def fetch_all():
     if not lock.acquire(blocking=False):
         return {"skipped": True}
@@ -91,17 +106,47 @@ def fetch_all():
                         msg = f'{e.get("title", "")[:40]}: {ex}'
                         errors.append(msg)
                         print("[fetch] failed:", msg)
-                        if "429" in str(ex) or "RESOURCE_EXHAUSTED" in str(ex) or "quota" in str(ex).lower():
+                        if is_rate_limit(ex):
                             errors.append("Stopped early: AI rate limit or quota reached. Wait a few minutes and try again.")
                             stop = True
                             break
-                    time.sleep(DELAY)
+                        if is_fatal(ex):
+                            errors.append("Stopped early: the AI model or API key is not working. "
+                                          "Check the model name and key in ai.py / your environment variables.")
+                            stop = True
+                            break
+                        continue  # failed call: no need to wait before the next article
+                    time.sleep(DELAY)  # pause only after a successful AI call
             except Exception as ex:
                 errors.append(f'{src["name"]}: {ex}')
                 print("[fetch] source failed:", src["name"], ex)
     finally:
         lock.release()
     return {"added": added, "errors": errors}
+
+
+def _run():
+    try:
+        status["last"] = fetch_all()
+    except Exception as ex:
+        status["last"] = {"added": 0, "errors": [str(ex)]}
+        print("[fetch] crashed:", ex)
+    finally:
+        status["running"] = False
+
+
+def start_fetch():
+    """Kick off fetch_all() in the background and return immediately (keeps the request under gunicorn's timeout)."""
+    if status["running"] or lock.locked():
+        return {"started": False, "running": True}
+    status["running"] = True
+    status["started_at"] = int(time.time() * 1000)
+    threading.Thread(target=_run, daemon=True).start()
+    return {"started": True, "running": True}
+
+
+def get_status():
+    return dict(status)
 
 
 def start_scheduler():
