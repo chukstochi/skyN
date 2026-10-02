@@ -1,5 +1,6 @@
 import os, re
 from decimal import Decimal
+from urllib.parse import urlparse, unquote
 
 import pymysql
 import pymysql.cursors
@@ -10,11 +11,14 @@ try:  # optional: read settings from a .env file next to this file
 except ImportError:
     pass
 
-HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
-PORT = int(os.environ.get("MYSQL_PORT", "3306"))
-USER = os.environ.get("MYSQL_USER", "root")
-PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
-DB = os.environ.get("MYSQL_DB", "skyn")
+# On Railway one variable is enough: MYSQL_URL (mysql://user:password@host:port/database).
+# On your own PC you can keep using the separate MYSQL_HOST / MYSQL_PORT / ... settings.
+_url = urlparse(os.environ.get("MYSQL_URL", ""))
+HOST = _url.hostname or os.environ.get("MYSQL_HOST", "127.0.0.1")
+PORT = _url.port or int(os.environ.get("MYSQL_PORT", "3306"))
+USER = unquote(_url.username) if _url.username else os.environ.get("MYSQL_USER", "root")
+PASSWORD = unquote(_url.password) if _url.password else os.environ.get("MYSQL_PASSWORD", "")
+DB = _url.path.lstrip("/") or os.environ.get("MYSQL_DB", "skyn")
 
 # Catch this where the old code caught sqlite3.IntegrityError (duplicate slug, url, email)
 IntegrityError = pymysql.err.IntegrityError
