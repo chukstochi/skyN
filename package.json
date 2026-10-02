@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^3.0.7"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
