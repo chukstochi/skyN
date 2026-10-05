@@ -97,18 +97,25 @@ export default function AdminDashboard({ onSignedOut }) {
     }
   }
 
+  // The backend starts the fetch in the background, so we check its status until it finishes.
   async function fetchNow() {
     setFetching(true)
     setMessage('Fetching and rewriting… this can take a minute.')
     try {
-      const r = await adminApi.fetchNow()
-      const errors = (r && r.errors) || []
+      const start = await adminApi.fetchNow()
+      if (start && start.skipped) setMessage('A fetch was already running. Waiting for it…')
+
+      let status = null
+      for (let i = 0; i < 120; i++) {
+        await new Promise((res) => setTimeout(res, 3000))
+        status = await adminApi.getFetchStatus()
+        if (status && (status.running === false || status.done === true || status.state === 'done')) break
+      }
+
+      const added = status?.added ?? status?.result?.added ?? 0
+      const errors = status?.errors || status?.result?.errors || []
       setMessage(
-        r && r.skipped
-          ? 'A fetch is already running.'
-          : `${r ? r.added : 0} new drafts added.${
-              errors.length ? ' Issues: ' + errors.slice(0, 3).join(' | ') : ''
-            }`
+        `${added} new drafts added.${errors.length ? ' Issues: ' + errors.slice(0, 3).join(' | ') : ''}`
       )
       reload()
     } catch (err) {
