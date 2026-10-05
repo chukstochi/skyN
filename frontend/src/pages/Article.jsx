@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { getArticle } from '../services/api.js'
 import { timeAgo } from '../utils.js'
 
+// The source shown to readers. (The admin page still shows the real source.)
+const SITE_SOURCE = 'Sky_N_News'
+
 export default function Article() {
   const { slug } = useParams()
   const [article, setArticle] = useState(null)
@@ -43,18 +46,12 @@ export default function Article() {
       <span className="tag">{article.category}</span>
       <h1>{article.title}</h1>
       <p className="meta">
-        By {article.author} · {timeAgo(article.published_at)} · Source: {article.source_name}
+        By {article.author} · {timeAgo(article.published_at)} · Source: {SITE_SOURCE}
       </p>
       {article.image && <img src={article.image} alt="" />}
       {paragraphs.map((p, i) => (
         <p key={i}>{p}</p>
       ))}
-      <p className="meta">
-        Source:{' '}
-        <a className="source-link" href={article.source_url} target="_blank" rel="noopener noreferrer">
-          {article.source_name}
-        </a>
-      </p>
     </article>
   )
 }

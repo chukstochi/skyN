@@ -28,7 +28,7 @@ export default function Footer() {
     <footer>
       <div className="w">
         <div className="logo">
-          SKY N <b>news</b>
+          Sky_N<b>_News</b>
         </div>
         <p>Real News · Global Perspective · Your World</p>
         <div className="socials">
@@ -40,7 +40,7 @@ export default function Footer() {
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Sky N news on ${s.name}`}
+                aria-label={`Sky_N_News on ${s.name}`}
                 title={s.name}
               >
                 {Icon ? <Icon aria-hidden="true" size={18} /> : s.name}
@@ -48,7 +48,7 @@ export default function Footer() {
             )
           })}
         </div>
-        <p>© {new Date().getFullYear()} Sky N news. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Sky_N_News. All rights reserved.</p>
       </div>
     </footer>
   )

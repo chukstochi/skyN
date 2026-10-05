@@ -20,7 +20,7 @@ export default function Header({ query, onQueryChange }) {
     <header>
       <div className="w hd">
         <Link className="logo" to="/">
-          SKY N <b>news</b>
+          Sky_N <b>_News</b>
         </Link>
         <input
           value={query}

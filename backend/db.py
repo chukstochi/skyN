@@ -1,119 +1,161 @@
-import os, re
-from decimal import Decimal
-from urllib.parse import urlparse, unquote
+import os, re, time
+from functools import wraps
+from dotenv import load_dotenv
+load_dotenv()
+from flask import Flask, request, jsonify, session, send_from_directory, redirect
+import html as ihtml
+import db, fetcher, social
 
-import pymysql
-import pymysql.cursors
+FRONT = os.path.join(os.path.dirname(__file__), "..", "frontend")
+app = Flask(__name__, static_folder=FRONT, static_url_path="")
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+db.init()
 
-try:  # optional: read settings from a .env file next to this file
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+def admin(f):
+    @wraps(f)
+    def w(*a, **k):
+        if not session.get("admin"): return jsonify(error="Not signed in"), 401
+        return f(*a, **k)
+    return w
 
-# On Railway one variable is enough: MYSQL_URL (mysql://user:password@host:port/database).
-# On your own PC you can keep using the separate MYSQL_HOST / MYSQL_PORT / ... settings.
-_url = urlparse(os.environ.get("MYSQL_URL", ""))
-HOST = _url.hostname or os.environ.get("MYSQL_HOST", "127.0.0.1")
-PORT = _url.port or int(os.environ.get("MYSQL_PORT", "3306"))
-USER = unquote(_url.username) if _url.username else os.environ.get("MYSQL_USER", "root")
-PASSWORD = unquote(_url.password) if _url.password else os.environ.get("MYSQL_PASSWORD", "")
-DB = _url.path.lstrip("/") or os.environ.get("MYSQL_DB", "skyn")
+@app.route("/")
+def home(): return send_from_directory(FRONT, "index.html")
 
-# Catch this where the old code caught sqlite3.IntegrityError (duplicate slug, url, email)
-IntegrityError = pymysql.err.IntegrityError
+# ---- public
+@app.get("/api/articles")
+def articles():
+    c = request.args.get("category")
+    sql = "SELECT id,title,slug,summary,category,image,author,published_at FROM articles WHERE status='published'"
+    sql += (" AND category=?" if c else "") + " ORDER BY published_at DESC LIMIT 40"
+    return jsonify(db.q(sql, (c,) if c else ()))
 
-SCHEMA = [
-    """CREATE TABLE IF NOT EXISTS articles(
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        title TEXT,
-        slug VARCHAR(255) UNIQUE,
-        summary TEXT,
-        body LONGTEXT,
-        category VARCHAR(50),
-        image TEXT,
-        source_name VARCHAR(255),
-        source_url VARCHAR(700) UNIQUE,
-        author VARCHAR(255),
-        status VARCHAR(20) DEFAULT 'draft',
-        created_at BIGINT,
-        published_at BIGINT,
-        social_shared TINYINT DEFAULT 0,
-        INDEX idx_status (status),
-        INDEX idx_category (category)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
-    """CREATE TABLE IF NOT EXISTS sources(
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255),
-        url VARCHAR(700) UNIQUE,
-        category VARCHAR(50)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
-    """CREATE TABLE IF NOT EXISTS subscribers(
-        email VARCHAR(255) PRIMARY KEY,
-        created_at BIGINT
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""",
-]
+@app.get("/api/articles/<slug>")
+def article(slug):
+    a = db.q("SELECT * FROM articles WHERE slug=? AND status='published'", (slug,), one=True)
+    return (jsonify(a) if a else (jsonify(error="Not found"), 404))
 
+@app.post("/api/subscribe")
+def subscribe():
+    e = str((request.json or {}).get("email", "")).strip()
+    if not re.match(r"^\S+@\S+\.\S+$", e): return jsonify(error="Enter a valid email"), 400
+    db.q("INSERT OR IGNORE INTO subscribers VALUES(?,?)", (e, int(time.time() * 1000)), write=True)
+    return jsonify(ok=1)
 
-def conn(use_database=True):
-    return pymysql.connect(
-        host=HOST,
-        port=PORT,
-        user=USER,
-        password=PASSWORD,
-        database=DB if use_database else None,
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=False,
-    )
+# ---- shareable article page (gives Facebook, X, WhatsApp etc. a title + image preview)
+@app.get("/article/<slug>")
+def article_page(slug):
+    a = db.q("SELECT * FROM articles WHERE slug=? AND status='published'", (slug,), one=True)
+    if not a: return redirect("/")
+    e = lambda s: ihtml.escape(str(s or ""), quote=True)
+    site = os.getenv("SITE_URL", "").rstrip("/")
+    img = (f'<meta property="og:image" content="{e(a["image"])}"><meta name="twitter:image" content="{e(a["image"])}">') if a["image"] else ""
+    return (f'<!doctype html><html><head><meta charset="utf-8"><title>{e(a["title"])} | Sky N news</title>'
+            f'<meta property="og:type" content="article"><meta property="og:site_name" content="Sky N news">'
+            f'<meta property="og:title" content="{e(a["title"])}"><meta property="og:description" content="{e(a["summary"])}">'
+            f'<meta property="og:url" content="{e(site)}/article/{e(slug)}">{img}<meta name="twitter:card" content="summary_large_image">'
+            f'</head><body><script>location.replace("/#{e(slug)}")</script><noscript><a href="/">Read on Sky N news</a></noscript></body></html>')
 
+# ---- admin
+@app.post("/api/admin/login")
+def login():
+    if (request.json or {}).get("password") != os.getenv("ADMIN_PASSWORD"): return jsonify(error="Wrong password"), 401
+    session["admin"] = True; return jsonify(ok=1)
 
-def init():
-    c = conn(use_database=False)
-    try:
-        with c.cursor() as cur:
-            cur.execute(
-                f"CREATE DATABASE IF NOT EXISTS `{DB}` "
-                "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-            )
-        c.commit()
-    finally:
-        c.close()
+@app.get("/api/admin/articles")
+@admin
+def a_list():
+    return jsonify(db.q("SELECT * FROM articles WHERE status=? ORDER BY created_at DESC LIMIT 100", (request.args.get("status", "draft"),)))
 
-    c = conn()
-    try:
-        with c.cursor() as cur:
-            for statement in SCHEMA:
-                cur.execute(statement)
-        c.commit()
-    finally:
-        c.close()
+def slugify(t):
+    s = re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:70] or "article"
+    return f"{s}-{int(time.time())}"
 
+# Your own article, written from the Write tab
+@app.post("/api/admin/articles")
+@admin
+def a_create():
+    d = request.json or {}
+    title, body = str(d.get("title", "")).strip(), str(d.get("body", "")).strip()
+    if not title or not body:
+        return jsonify(error="Headline and body are required"), 400
+    publish = bool(d.get("publish"))
+    now = int(time.time() * 1000)
+    slug = slugify(title)
+    db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url) "
+         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+         (title, slug, d.get("summary", ""), body, d.get("category", "World"), d.get("author", ""),
+          d.get("image") or None, "published" if publish else "draft", now if publish else None,
+          now, "Sky N news", None), write=True)
+    out = {"ok": 1}
+    if publish:
+        art = db.q("SELECT * FROM articles WHERE slug=?", (slug,), one=True)
+        if art:
+            out["social"] = social.share(art)
+            if any(v == "ok" for v in out["social"].values()):
+                db.q("UPDATE articles SET social_shared=1 WHERE id=?", (art["id"],), write=True)
+    return jsonify(out)
 
-def _convert(sql):
-    """Lets the rest of the backend keep its SQLite-style queries."""
-    sql = sql.replace("%", "%%").replace("?", "%s")
-    sql = re.sub(r"INSERT\s+OR\s+IGNORE", "INSERT IGNORE", sql, flags=re.I)
-    sql = re.sub(r"INSERT\s+OR\s+REPLACE", "REPLACE", sql, flags=re.I)
-    return sql
+@app.put("/api/admin/articles/<int:i>")
+@admin
+def a_edit(i):
+    d = request.json
+    db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=? WHERE id=?",
+         (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, i), write=True)
+    return jsonify(ok=1)
 
+@app.post("/api/admin/articles/<int:i>/<act>")
+@admin
+def a_act(i, act):
+    if act == "publish": db.q("UPDATE articles SET status='published',published_at=? WHERE id=?", (int(time.time() * 1000), i), write=True)
+    elif act == "reject": db.q("UPDATE articles SET status='rejected' WHERE id=?", (i,), write=True)
+    elif act == "draft": db.q("UPDATE articles SET status='draft',published_at=NULL WHERE id=?", (i,), write=True)
+    else: return jsonify(error="Bad action"), 400
+    out = {"ok": 1}
+    if act == "publish":
+        art = db.q("SELECT * FROM articles WHERE id=?", (i,), one=True)
+        if art and not art.get("social_shared"):
+            out["social"] = social.share(art)
+            if any(v == "ok" for v in out["social"].values()):
+                db.q("UPDATE articles SET social_shared=1 WHERE id=?", (i,), write=True)
+    return jsonify(out)
 
-def _clean(row):
-    for key, value in row.items():
-        if isinstance(value, Decimal):
-            row[key] = int(value) if value == value.to_integral_value() else float(value)
-    return row
+@app.delete("/api/admin/articles/<int:i>")
+@admin
+def a_del(i):
+    db.q("DELETE FROM articles WHERE id=?", (i,), write=True); return jsonify(ok=1)
 
+@app.get("/api/admin/sources")
+@admin
+def s_list(): return jsonify(db.q("SELECT * FROM sources"))
 
-def q(sql, args=(), one=False, write=False):
-    c = conn()
-    try:
-        with c.cursor() as cur:
-            cur.execute(_convert(sql), tuple(args))
-            if write:
-                c.commit()
-                return cur.lastrowid
-            rows = [_clean(r) for r in cur.fetchall()]
-            return (rows[0] if rows else None) if one else rows
-    finally:
-        c.close()
+@app.post("/api/admin/sources")
+@admin
+def s_add():
+    d = request.json or {}
+    if not d.get("name") or not d.get("url"): return jsonify(error="Name and feed URL required"), 400
+    try: db.q("INSERT INTO sources(name,url,category) VALUES(?,?,?)", (d["name"], d["url"], d.get("category", "World")), write=True)
+    except Exception: return jsonify(error="Feed already added"), 400
+    return jsonify(ok=1)
+
+@app.delete("/api/admin/sources/<int:i>")
+@admin
+def s_del(i):
+    db.q("DELETE FROM sources WHERE id=?", (i,), write=True); return jsonify(ok=1)
+
+# Starts the fetch in the background and returns straight away (avoids the gunicorn worker timeout).
+# Poll /api/admin/fetch/status for progress and the final {added, errors} result.
+@app.post("/api/admin/fetch")
+@admin
+def s_fetch(): return jsonify(fetcher.start_fetch())
+
+@app.get("/api/admin/fetch/status")
+@admin
+def s_fetch_status(): return jsonify(fetcher.get_status())
+
+@app.get("/api/admin/stats")
+@admin
+def stats(): return jsonify(ok=1)
+
+if __name__ == "__main__":
+    fetcher.start_scheduler()
+    app.run(port=int(os.getenv("PORT", 3000)), debug=False, threaded=True)

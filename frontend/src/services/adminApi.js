@@ -38,31 +38,10 @@ export const getArticles = (status) => request(`articles?status=${encodeURICompo
 export const updateArticle = (id, fields) => request(`articles/${id}`, 'PUT', fields)
 export const articleAction = (id, action) => request(`articles/${id}/${action}`, 'POST')
 export const deleteArticle = (id) => request(`articles/${id}`, 'DELETE')
+export const fetchNow = () => request('fetch', 'POST')
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-// Starts the fetch on the server (returns instantly), then polls until it finishes.
-// Resolves with { added, errors } so callers work exactly as before.
-export async function fetchNow() {
-  await request('fetch', 'POST')
-
-  const POLL_MS = 3000
-  const MAX_WAIT_MS = 10 * 60 * 1000
-  const started = Date.now()
-
-  while (Date.now() - started < MAX_WAIT_MS) {
-    await sleep(POLL_MS)
-    const status = await request('fetch/status')
-    if (status && !status.running) {
-      const last = status.last || {}
-      return { added: last.added || 0, errors: last.errors || [] }
-    }
-  }
-  return {
-    added: 0,
-    errors: ['Still running in the background. Refresh the Drafts tab in a few minutes.'],
-  }
-}
+// Your own article: { title, summary, category, author, image, body, publish }
+export const createArticle = (fields) => request('articles', 'POST', fields)
 
 export const getSources = () => request('sources')
 export const addSource = (source) => request('sources', 'POST', source)

@@ -3,6 +3,7 @@ const TABS = [
   ['published', 'Published'],
   ['rejected', 'Rejected'],
   ['sources', 'Sources'],
+  ['write', 'Write article'],
 ]
 
 export default function AdminTabs({ tab, onChange }) {

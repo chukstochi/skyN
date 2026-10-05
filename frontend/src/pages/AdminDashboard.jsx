@@ -3,6 +3,7 @@ import * as adminApi from '../services/adminApi.js'
 import { UnauthorizedError } from '../services/adminApi.js'
 import AdminTabs from '../components/admin/AdminTabs.jsx'
 import ArticleEditor from '../components/admin/ArticleEditor.jsx'
+import ArticleWriter from '../components/admin/ArticleWriter.jsx'
 import SourceManager from '../components/admin/SourceManager.jsx'
 
 export default function AdminDashboard({ onSignedOut }) {
@@ -23,6 +24,10 @@ export default function AdminDashboard({ onSignedOut }) {
 
   // Load the list for the current tab (and again whenever reload() is called)
   useEffect(() => {
+    if (tab === 'write') {
+      setLoading(false)
+      return undefined
+    }
     let cancelled = false
     const request = tab === 'sources' ? adminApi.getSources() : adminApi.getArticles(tab)
     request
@@ -80,6 +85,18 @@ export default function AdminDashboard({ onSignedOut }) {
     }
   }
 
+  // Your own article. Returns true when it was saved so the form can clear itself.
+  async function createArticle(fields, publish) {
+    try {
+      await adminApi.createArticle({ ...fields, publish })
+      setMessage(publish ? 'Your article is published.' : 'Saved. Find it under Needs review.')
+      return true
+    } catch (err) {
+      handleError(err)
+      return false
+    }
+  }
+
   async function fetchNow() {
     setFetching(true)
     setMessage('Fetching and rewriting… this can take a minute.')
@@ -122,7 +139,9 @@ export default function AdminDashboard({ onSignedOut }) {
   }
 
   let content
-  if (loading) {
+  if (tab === 'write') {
+    content = <ArticleWriter onSubmit={createArticle} />
+  } else if (loading) {
     content = <p className="admin-note">Loading…</p>
   } else if (tab === 'sources') {
     content = <SourceManager sources={sources} onAdd={addSource} onRemove={removeSource} />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ARTICLE_CATEGORIES } from '../../constants.js'
+import ImagePreview from './ImagePreview.jsx'
 
 // One article card in the review desk. Keeps its own edits until saved.
 export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete }) {
@@ -16,13 +17,19 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
   }
 
+  const hasSourceLink = /^https?:\/\//.test(article.source_url || '')
+
   return (
     <div className="admin-card">
       <div className="admin-note">
         Source:{' '}
-        <a href={article.source_url} target="_blank" rel="noopener noreferrer">
-          {article.source_name}
-        </a>
+        {hasSourceLink ? (
+          <a href={article.source_url} target="_blank" rel="noopener noreferrer">
+            {article.source_name}
+          </a>
+        ) : (
+          article.source_name
+        )}
       </div>
 
       <label>
@@ -53,6 +60,8 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
         Image URL
         <input name="image" value={form.image} onChange={update} />
       </label>
+      <ImagePreview url={form.image} />
+
       <label>
         Body
         <textarea name="body" value={form.body} onChange={update} />
