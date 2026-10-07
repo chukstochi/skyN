@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from flask import Flask, request, jsonify, session, send_from_directory, redirect
 import html as ihtml
+from urllib.parse import urljoin
 import db, fetcher, social
 
 FRONT = os.path.join(os.path.dirname(__file__), "..", "frontend")
@@ -46,19 +47,44 @@ def short(s, n=50):
     s = " ".join(str(s or "").split())
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip() + "…"
 
+def base_url():
+    site = os.getenv("SITE_URL", "").rstrip("/")
+    if site:
+        return site
+    return request.host_url.rstrip("/").replace("http://", "https://", 1)
+
+# Turns any stored image address into a full public https:// address
+def abs_url(u):
+    u = str(u or "").strip()
+    if not u or u.startswith("data:"):
+        return ""
+    if u.startswith("//"):
+        u = "https:" + u
+    if not u.lower().startswith("http"):
+        u = urljoin(base_url() + "/", u.lstrip("/"))
+    return u.replace("http://", "https://", 1)
+
 # ---- shareable article page (gives Facebook, X, WhatsApp etc. a title + image preview)
 @app.get("/article/<slug>")
 def article_page(slug):
     a = db.q("SELECT * FROM articles WHERE slug=? AND status='published'", (slug,), one=True)
     if not a: return redirect("/")
     e = lambda s: ihtml.escape(str(s or ""), quote=True)
-    site = os.getenv("SITE_URL", "").rstrip("/")
-    img = (f'<meta property="og:image" content="{e(a["image"])}"><meta name="twitter:image" content="{e(a["image"])}">') if a["image"] else ""
+    site = base_url()
+    page = f"{site}/article/{slug}"
+    image = abs_url(a["image"]) or abs_url(os.getenv("DEFAULT_OG_IMAGE", "/og-default.jpg"))
+    img = (f'<meta property="og:image" content="{e(image)}">'
+           f'<meta property="og:image:secure_url" content="{e(image)}">'
+           f'<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+           f'<meta name="twitter:image" content="{e(image)}">') if image else ""
     return (f'<!doctype html><html><head><meta charset="utf-8"><title>{e(a["title"])} | Sky_N_News</title>'
             f'<meta property="og:type" content="article"><meta property="og:site_name" content="Sky_N_News">'
             f'<meta property="og:title" content="{e(a["title"])}"><meta property="og:description" content="{e(short(a["summary"]))}">'
-            f'<meta property="og:url" content="{e(site)}/article/{e(slug)}">{img}<meta name="twitter:card" content="summary_large_image">'
-            f'</head><body><script>location.replace("/#{e(slug)}")</script><noscript><a href="/">Read on Sky_N_News</a></noscript></body></html>')
+            f'<meta property="og:url" content="{e(page)}">{img}'
+            f'<meta name="twitter:card" content="summary_large_image">'
+            f'<meta name="twitter:title" content="{e(a["title"])}">'
+            f'</head><body><script>location.replace("/#{e(slug)}")</script>'
+            f'<noscript><a href="/">Read on Sky_N_News</a></noscript></body></html>')
 
 # ---- admin
 @app.post("/api/admin/login")
