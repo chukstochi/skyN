@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   FaFacebookF,
   FaXTwitter,
@@ -48,6 +49,9 @@ export default function Footer() {
             )
           })}
         </div>
+        <p>
+          <Link to="/privacy">Privacy Policy</Link> · <Link to="/terms">Terms &amp; Editorial Policy</Link>
+        </p>
         <p>© {new Date().getFullYear()} Sky_N_News. All rights reserved.</p>
       </div>
     </footer>

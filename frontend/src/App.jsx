@@ -3,6 +3,7 @@ import Layout from './components/Layout.jsx'
 import Home from './pages/Home.jsx'
 import Article from './pages/Article.jsx'
 import Admin from './pages/Admin.jsx'
+import LegalPage from './components/LegalPage.jsx'
 
 export default function App() {
   return (
@@ -14,6 +15,8 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="category/:name" element={<Home />} />
         <Route path="article/:slug" element={<Article />} />
+        <Route path="privacy" element={<LegalPage page="privacy" />} />
+        <Route path="terms" element={<LegalPage page="terms" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

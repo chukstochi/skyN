@@ -41,6 +41,11 @@ def subscribe():
     db.q("INSERT OR IGNORE INTO subscribers VALUES(?,?)", (e, int(time.time() * 1000)), write=True)
     return jsonify(ok=1)
 
+# Short text for social previews: at most n characters, cut at a word boundary
+def short(s, n=50):
+    s = " ".join(str(s or "").split())
+    return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip() + "…"
+
 # ---- shareable article page (gives Facebook, X, WhatsApp etc. a title + image preview)
 @app.get("/article/<slug>")
 def article_page(slug):
@@ -51,14 +56,15 @@ def article_page(slug):
     img = (f'<meta property="og:image" content="{e(a["image"])}"><meta name="twitter:image" content="{e(a["image"])}">') if a["image"] else ""
     return (f'<!doctype html><html><head><meta charset="utf-8"><title>{e(a["title"])} | Sky_N_News</title>'
             f'<meta property="og:type" content="article"><meta property="og:site_name" content="Sky_N_News">'
-            f'<meta property="og:title" content="{e(a["title"])}"><meta property="og:description" content="{e(a["summary"])}">'
+            f'<meta property="og:title" content="{e(a["title"])}"><meta property="og:description" content="{e(short(a["summary"]))}">'
             f'<meta property="og:url" content="{e(site)}/article/{e(slug)}">{img}<meta name="twitter:card" content="summary_large_image">'
             f'</head><body><script>location.replace("/#{e(slug)}")</script><noscript><a href="/">Read on Sky_N_News</a></noscript></body></html>')
 
 # ---- admin
 @app.post("/api/admin/login")
 def login():
-    if (request.json or {}).get("password") != os.getenv("ADMIN_PASSWORD"): return jsonify(error="Wrong password"), 401
+    pw = os.getenv("ADMIN_PASSWORD")
+    if not pw or (request.json or {}).get("password") != pw: return jsonify(error="Wrong password"), 401
     session["admin"] = True; return jsonify(ok=1)
 
 @app.get("/api/admin/articles")

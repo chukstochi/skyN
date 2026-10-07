@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ARTICLE_CATEGORIES } from '../../constants.js'
 import ImagePreview from './ImagePreview.jsx'
+import ShareButtons from './ShareButtons.jsx'
 
 // One article card in the review desk. Keeps its own edits until saved.
 export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete }) {
@@ -74,7 +75,10 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
             Publish
           </button>
         ) : (
-          <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
+          <>
+            <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
+            <ShareButtons article={article} />
+          </>
         )}
         {status === 'draft' && (
           <button onClick={() => onChangeStatus(article.id, form, 'reject')}>Reject</button>
