@@ -102,7 +102,7 @@ def slugify(t):
     s = re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:70] or "article"
     return f"{s}-{int(time.time())}"
 
-# Your own article, written from the Write tab //fixed
+# Your own article, written from the Write tab 
 @app.post("/api/admin/articles")
 @admin
 def a_create():
