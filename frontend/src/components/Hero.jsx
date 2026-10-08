@@ -5,7 +5,7 @@ export default function Hero({ lead, side }) {
   return (
     <div className="hero">
       {lead ? (
-        <Link className="big" to={articlePath(lead)} style={imageStyle(lead)}>
+        <Link className="big wm-image" to={articlePath(lead)} style={imageStyle(lead)}>
           <div>
             <span className="tag">{lead.category}</span>
             <h2>{lead.title}</h2>
@@ -26,7 +26,7 @@ export default function Hero({ lead, side }) {
       <div className="side">
         {side.map((a) => (
           <Link key={a.slug} className="mini" to={articlePath(a)}>
-            <i style={imageStyle(a)} />
+            <i className="wm-image" style={imageStyle(a)} />
             <div>
               <span className="tag">{a.category}</span>
               <h4>{a.title}</h4>

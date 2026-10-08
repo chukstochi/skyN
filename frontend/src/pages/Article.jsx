@@ -48,7 +48,11 @@ export default function Article() {
       <p className="meta">
         By {article.author} · {timeAgo(article.published_at)} · Source: {SITE_SOURCE}
       </p>
-      {article.image && <img src={article.image} alt="" />}
+      {article.image && (
+        <div className="article-media wm-image">
+          <img src={article.image} alt="" />
+        </div>
+      )}
       {paragraphs.map((p, i) => (
         <p key={i}>{p}</p>
       ))}

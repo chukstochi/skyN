@@ -759,3 +759,77 @@ footer .socials a:hover {
     margin-top: 8vh;
   }
 }
+
+/* === Watermark: SKY_N_NEWS on every image (lower left) and video (top left) === */
+.wm-image,
+.wm-video {
+  position: relative;
+}
+
+.wm-image::after,
+.wm-video::after {
+  content: 'SKY_N_NEWS';
+  position: absolute;
+  z-index: 2;
+  font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  opacity: 0.92;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  user-select: none;
+}
+
+.wm-image::after {
+  left: 10px;
+  bottom: 9px;
+}
+
+.wm-video::after {
+  left: 12px;
+  top: 12px;
+}
+
+/* bigger on large pictures, smaller on small thumbnails */
+.big.wm-image::after,
+.article-media.wm-image::after {
+  font-size: 17px;
+  left: 16px;
+  bottom: 14px;
+}
+
+.mini i.wm-image::after {
+  font-size: 8px;
+  left: 6px;
+  bottom: 5px;
+}
+
+/* keep the hero headline above the watermark */
+.big.wm-image div {
+  padding-bottom: 50px;
+}
+
+.article-media {
+  line-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.article-media img {
+  display: block;
+  border-radius: 0;
+}
+
+.video-frame {
+  line-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-frame video {
+  display: block;
+  width: 100%;
+}
