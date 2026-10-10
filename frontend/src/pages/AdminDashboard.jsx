@@ -85,6 +85,19 @@ export default function AdminDashboard({ onSignedOut }) {
     }
   }
 
+  // Post a published article to the social accounts (again).
+  async function shareArticle(id) {
+    setMessage('Sharing…')
+    try {
+      const res = await adminApi.articleAction(id, 'share')
+      const social = (res && res.social) || {}
+      const parts = Object.entries(social).map(([site, result]) => `${site}: ${result}`)
+      setMessage(parts.length ? 'Share result — ' + parts.join(' | ') : 'Shared.')
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
   // Your own article. Returns true when it was saved so the form can clear itself.
   async function createArticle(fields, publish) {
     try {
@@ -161,6 +174,7 @@ export default function AdminDashboard({ onSignedOut }) {
         onSave={saveArticle}
         onChangeStatus={changeStatus}
         onDelete={deleteArticle}
+        onShare={shareArticle}
       />
     ))
   } else {

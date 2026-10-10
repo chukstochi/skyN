@@ -5,15 +5,12 @@ load_dotenv()
 from flask import Flask, request, jsonify, session, send_from_directory, redirect
 import html as ihtml
 from urllib.parse import urljoin
-import db, fetcher, social, media
+import db, fetcher, social
 
 FRONT = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app = Flask(__name__, static_folder=FRONT, static_url_path="")
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
-app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024
 db.init()
-media.init()
-app.register_blueprint(media.bp)
 
 def admin(f):
     @wraps(f)
@@ -105,7 +102,7 @@ def slugify(t):
     s = re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:70] or "article"
     return f"{s}-{int(time.time())}"
 
-# Your own article, written from the Write tab 
+# Your own article, written from the Write tab
 @app.post("/api/admin/articles")
 @admin
 def a_create():
@@ -116,11 +113,11 @@ def a_create():
     publish = bool(d.get("publish"))
     now = int(time.time() * 1000)
     slug = slugify(title)
-    db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url,video) "
-         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url) "
+         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
          (title, slug, d.get("summary", ""), body, d.get("category", "World"), d.get("author", ""),
           d.get("image") or None, "published" if publish else "draft", now if publish else None,
-          now, "Sky_N_News", None, d.get("video") or None), write=True)
+          now, "Sky_N_News", None), write=True)
     out = {"ok": 1}
     if publish:
         try:
@@ -137,8 +134,8 @@ def a_create():
 @admin
 def a_edit(i):
     d = request.json
-    db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=?,video=? WHERE id=?",
-         (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, d.get("video") or None, i), write=True)
+    db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=? WHERE id=?",
+         (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, i), write=True)
     return jsonify(ok=1)
 
 @app.post("/api/admin/articles/<int:i>/<act>")
@@ -147,8 +144,16 @@ def a_act(i, act):
     if act == "publish": db.q("UPDATE articles SET status='published',published_at=? WHERE id=?", (int(time.time() * 1000), i), write=True)
     elif act == "reject": db.q("UPDATE articles SET status='rejected' WHERE id=?", (i,), write=True)
     elif act == "draft": db.q("UPDATE articles SET status='draft',published_at=NULL WHERE id=?", (i,), write=True)
+    elif act == "share": pass  # handled below: post the article to the social accounts again
     else: return jsonify(error="Bad action"), 400
     out = {"ok": 1}
+    if act == "share":
+        art = db.q("SELECT * FROM articles WHERE id=?", (i,), one=True)
+        if not art: return jsonify(error="Article not found"), 404
+        out["social"] = social.share(art)
+        if any(v == "ok" for v in out["social"].values()):
+            db.q("UPDATE articles SET social_shared=1 WHERE id=?", (i,), write=True)
+        return jsonify(out)
     if act == "publish":
         art = db.q("SELECT * FROM articles WHERE id=?", (i,), one=True)
         if art and not art.get("social_shared"):
@@ -197,3 +202,207 @@ def stats(): return jsonify(ok=1)
 if __name__ == "__main__":
     fetcher.start_scheduler()
     app.run(port=int(os.getenv("PORT", 3000)), debug=False, threaded=True)
+
+
+
+
+
+# import os, re, time
+# from functools import wraps
+# from dotenv import load_dotenv
+# load_dotenv()
+# from flask import Flask, request, jsonify, session, send_from_directory, redirect
+# import html as ihtml
+# from urllib.parse import urljoin
+# import db, fetcher, social, media
+
+# FRONT = os.path.join(os.path.dirname(__file__), "..", "frontend")
+# app = Flask(__name__, static_folder=FRONT, static_url_path="")
+# app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+# app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024
+# db.init()
+# media.init()
+# app.register_blueprint(media.bp)
+
+# def admin(f):
+#     @wraps(f)
+#     def w(*a, **k):
+#         if not session.get("admin"): return jsonify(error="Not signed in"), 401
+#         return f(*a, **k)
+#     return w
+
+# @app.route("/")
+# def home(): return send_from_directory(FRONT, "index.html")
+
+# # ---- public
+# @app.get("/api/articles")
+# def articles():
+#     c = request.args.get("category")
+#     sql = "SELECT id,title,slug,summary,category,image,author,published_at FROM articles WHERE status='published'"
+#     sql += (" AND category=?" if c else "") + " ORDER BY published_at DESC LIMIT 40"
+#     return jsonify(db.q(sql, (c,) if c else ()))
+
+# @app.get("/api/articles/<slug>")
+# def article(slug):
+#     a = db.q("SELECT * FROM articles WHERE slug=? AND status='published'", (slug,), one=True)
+#     return (jsonify(a) if a else (jsonify(error="Not found"), 404))
+
+# @app.post("/api/subscribe")
+# def subscribe():
+#     e = str((request.json or {}).get("email", "")).strip()
+#     if not re.match(r"^\S+@\S+\.\S+$", e): return jsonify(error="Enter a valid email"), 400
+#     db.q("INSERT OR IGNORE INTO subscribers VALUES(?,?)", (e, int(time.time() * 1000)), write=True)
+#     return jsonify(ok=1)
+
+# # Short text for social previews: at most n characters, cut at a word boundary
+# def short(s, n=50):
+#     s = " ".join(str(s or "").split())
+#     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0].rstrip() + "…"
+
+# def base_url():
+#     site = os.getenv("SITE_URL", "").rstrip("/")
+#     if site:
+#         return site
+#     return request.host_url.rstrip("/").replace("http://", "https://", 1)
+
+# # Turns any stored image address into a full public https:// address
+# def abs_url(u):
+#     u = str(u or "").strip()
+#     if not u or u.startswith("data:"):
+#         return ""
+#     if u.startswith("//"):
+#         u = "https:" + u
+#     if not u.lower().startswith("http"):
+#         u = urljoin(base_url() + "/", u.lstrip("/"))
+#     return u.replace("http://", "https://", 1)
+
+# # ---- shareable article page (gives Facebook, X, WhatsApp etc. a title + image preview)
+# @app.get("/article/<slug>")
+# def article_page(slug):
+#     a = db.q("SELECT * FROM articles WHERE slug=? AND status='published'", (slug,), one=True)
+#     if not a: return redirect("/")
+#     e = lambda s: ihtml.escape(str(s or ""), quote=True)
+#     site = base_url()
+#     page = f"{site}/article/{slug}"
+#     image = abs_url(a["image"]) or abs_url(os.getenv("DEFAULT_OG_IMAGE", "/og-default.jpg"))
+#     img = (f'<meta property="og:image" content="{e(image)}">'
+#            f'<meta property="og:image:secure_url" content="{e(image)}">'
+#            f'<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+#            f'<meta name="twitter:image" content="{e(image)}">') if image else ""
+#     return (f'<!doctype html><html><head><meta charset="utf-8"><title>{e(a["title"])} | Sky_N_News</title>'
+#             f'<meta property="og:type" content="article"><meta property="og:site_name" content="Sky_N_News">'
+#             f'<meta property="og:title" content="{e(a["title"])}"><meta property="og:description" content="{e(short(a["summary"]))}">'
+#             f'<meta property="og:url" content="{e(page)}">{img}'
+#             f'<meta name="twitter:card" content="summary_large_image">'
+#             f'<meta name="twitter:title" content="{e(a["title"])}">'
+#             f'</head><body><script>location.replace("/#{e(slug)}")</script>'
+#             f'<noscript><a href="/">Read on Sky_N_News</a></noscript></body></html>')
+
+# # ---- admin
+# @app.post("/api/admin/login")
+# def login():
+#     pw = os.getenv("ADMIN_PASSWORD")
+#     if not pw or (request.json or {}).get("password") != pw: return jsonify(error="Wrong password"), 401
+#     session["admin"] = True; return jsonify(ok=1)
+
+# @app.get("/api/admin/articles")
+# @admin
+# def a_list():
+#     return jsonify(db.q("SELECT * FROM articles WHERE status=? ORDER BY created_at DESC LIMIT 100", (request.args.get("status", "draft"),)))
+
+# def slugify(t):
+#     s = re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:70] or "article"
+#     return f"{s}-{int(time.time())}"
+
+# # Your own article, written from the Write tab 
+# @app.post("/api/admin/articles")
+# @admin
+# def a_create():
+#     d = request.json or {}
+#     title, body = str(d.get("title", "")).strip(), str(d.get("body", "")).strip()
+#     if not title or not body:
+#         return jsonify(error="Headline and body are required"), 400
+#     publish = bool(d.get("publish"))
+#     now = int(time.time() * 1000)
+#     slug = slugify(title)
+#     db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url,video) "
+#          "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+#          (title, slug, d.get("summary", ""), body, d.get("category", "World"), d.get("author", ""),
+#           d.get("image") or None, "published" if publish else "draft", now if publish else None,
+#           now, "Sky_N_News", None, d.get("video") or None), write=True)
+#     out = {"ok": 1}
+#     if publish:
+#         try:
+#             art = db.q("SELECT * FROM articles WHERE slug=?", (slug,), one=True)
+#             if art:
+#                 out["social"] = social.share(art)
+#                 if any(v == "ok" for v in out["social"].values()):
+#                     db.q("UPDATE articles SET social_shared=1 WHERE id=?", (art["id"],), write=True)
+#         except Exception as ex:
+#             print("[write] social share failed:", ex)
+#     return jsonify(out)
+
+# @app.put("/api/admin/articles/<int:i>")
+# @admin
+# def a_edit(i):
+#     d = request.json
+#     db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=?,video=? WHERE id=?",
+#          (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, d.get("video") or None, i), write=True)
+#     return jsonify(ok=1)
+
+# @app.post("/api/admin/articles/<int:i>/<act>")
+# @admin
+# def a_act(i, act):
+#     if act == "publish": db.q("UPDATE articles SET status='published',published_at=? WHERE id=?", (int(time.time() * 1000), i), write=True)
+#     elif act == "reject": db.q("UPDATE articles SET status='rejected' WHERE id=?", (i,), write=True)
+#     elif act == "draft": db.q("UPDATE articles SET status='draft',published_at=NULL WHERE id=?", (i,), write=True)
+#     else: return jsonify(error="Bad action"), 400
+#     out = {"ok": 1}
+#     if act == "publish":
+#         art = db.q("SELECT * FROM articles WHERE id=?", (i,), one=True)
+#         if art and not art.get("social_shared"):
+#             out["social"] = social.share(art)
+#             if any(v == "ok" for v in out["social"].values()):
+#                 db.q("UPDATE articles SET social_shared=1 WHERE id=?", (i,), write=True)
+#     return jsonify(out)
+
+# @app.delete("/api/admin/articles/<int:i>")
+# @admin
+# def a_del(i):
+#     db.q("DELETE FROM articles WHERE id=?", (i,), write=True); return jsonify(ok=1)
+
+# @app.get("/api/admin/sources")
+# @admin
+# def s_list(): return jsonify(db.q("SELECT * FROM sources"))
+
+# @app.post("/api/admin/sources")
+# @admin
+# def s_add():
+#     d = request.json or {}
+#     if not d.get("name") or not d.get("url"): return jsonify(error="Name and feed URL required"), 400
+#     try: db.q("INSERT INTO sources(name,url,category) VALUES(?,?,?)", (d["name"], d["url"], d.get("category", "World")), write=True)
+#     except Exception: return jsonify(error="Feed already added"), 400
+#     return jsonify(ok=1)
+
+# @app.delete("/api/admin/sources/<int:i>")
+# @admin
+# def s_del(i):
+#     db.q("DELETE FROM sources WHERE id=?", (i,), write=True); return jsonify(ok=1)
+
+# # Starts the fetch in the background and returns straight away (avoids the gunicorn worker timeout).
+# # Poll /api/admin/fetch/status for progress and the final {added, errors} result.
+# @app.post("/api/admin/fetch")
+# @admin
+# def s_fetch(): return jsonify(fetcher.start_fetch())
+
+# @app.get("/api/admin/fetch/status")
+# @admin
+# def s_fetch_status(): return jsonify(fetcher.get_status())
+
+# @app.get("/api/admin/stats")
+# @admin
+# def stats(): return jsonify(ok=1)
+
+# if __name__ == "__main__":
+#     fetcher.start_scheduler()
+#     app.run(port=int(os.getenv("PORT", 3000)), debug=False, threaded=True)

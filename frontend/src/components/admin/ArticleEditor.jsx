@@ -4,7 +4,7 @@ import ImagePreview from './ImagePreview.jsx'
 import MediaPicker from './MediaPicker.jsx'
 
 // One article card in the review desk. Keeps its own edits until saved.
-export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete }) {
+export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete, onShare }) {
   const [form, setForm] = useState({
     title: article.title ?? '',
     summary: article.summary ?? '',
@@ -89,7 +89,10 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
             Publish
           </button>
         ) : (
-          <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
+          <>
+            <button onClick={() => onShare(article.id)}>Share</button>
+            <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
+          </>
         )}
         {status === 'draft' && (
           <button onClick={() => onChangeStatus(article.id, form, 'reject')}>Reject</button>
