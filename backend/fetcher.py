@@ -72,6 +72,30 @@ def is_fatal(ex):
                                 "API key", "API_KEY_INVALID", "UNAUTHENTICATED"))
 
 
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+
+
+def read_feed(url):
+    """Download the feed ourselves with a browser-like User-Agent (BBC, Channels and others
+    refuse feedparser's default one and send back an empty page), then parse what we got."""
+    req = urllib.request.Request(url, headers={
+        "User-Agent": BROWSER_UA,
+        "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    try:
+        raw = urllib.request.urlopen(req, timeout=20).read()
+    except Exception as ex:
+        raise Exception(f"could not download the feed ({ex}) - check the URL: {url}")
+    feed = feedparser.parse(raw)
+    if not feed.entries:
+        start = raw[:80].decode("utf-8", "ignore").strip().replace("\n", " ")
+        raise Exception(f"no stories found in feed - the page did not look like an RSS feed "
+                        f"(got {len(raw)} bytes starting: {start!r}) - check the URL: {url}")
+    return feed
+
+
 def fetch_all():
     if not lock.acquire(blocking=False):
         return {"skipped": True}
@@ -81,9 +105,7 @@ def fetch_all():
             if stop:
                 break
             try:
-                feed = feedparser.parse(src["url"])
-                if not feed.entries:
-                    raise Exception("no stories found in feed")
+                feed = read_feed(src["url"])
                 done = 0
                 for e in feed.entries:
                     if done >= PER_SOURCE:

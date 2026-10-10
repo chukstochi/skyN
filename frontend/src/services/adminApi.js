@@ -39,6 +39,7 @@ export const updateArticle = (id, fields) => request(`articles/${id}`, 'PUT', fi
 export const articleAction = (id, action) => request(`articles/${id}/${action}`, 'POST')
 export const deleteArticle = (id) => request(`articles/${id}`, 'DELETE')
 export const fetchNow = () => request('fetch', 'POST')
+export const getFetchStatus = () => request('fetch/status')
 
 // Your own article: { title, summary, category, author, image, video, body, publish }
 export const createArticle = (fields) => request('articles', 'POST', fields)
