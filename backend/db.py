@@ -65,6 +65,7 @@ def conn(use_database=True):
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False,
+        max_allowed_packet=64 * 1024 * 1024,
     )
 
 

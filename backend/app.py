@@ -5,12 +5,15 @@ load_dotenv()
 from flask import Flask, request, jsonify, session, send_from_directory, redirect
 import html as ihtml
 from urllib.parse import urljoin
-import db, fetcher, social
+import db, fetcher, social, media
 
 FRONT = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app = Flask(__name__, static_folder=FRONT, static_url_path="")
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024
 db.init()
+media.init()
+app.register_blueprint(media.bp)
 
 def admin(f):
     @wraps(f)
@@ -113,11 +116,11 @@ def a_create():
     publish = bool(d.get("publish"))
     now = int(time.time() * 1000)
     slug = slugify(title)
-    db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url) "
-         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+    db.q("INSERT INTO articles(title,slug,summary,body,category,author,image,status,published_at,created_at,source_name,source_url,video) "
+         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
          (title, slug, d.get("summary", ""), body, d.get("category", "World"), d.get("author", ""),
           d.get("image") or None, "published" if publish else "draft", now if publish else None,
-          now, "Sky_N_News", None), write=True)
+          now, "Sky_N_News", None, d.get("video") or None), write=True)
     out = {"ok": 1}
     if publish:
         try:
@@ -134,8 +137,8 @@ def a_create():
 @admin
 def a_edit(i):
     d = request.json
-    db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=? WHERE id=?",
-         (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, i), write=True)
+    db.q("UPDATE articles SET title=?,summary=?,body=?,category=?,author=?,image=?,video=? WHERE id=?",
+         (d["title"], d["summary"], d["body"], d["category"], d["author"], d.get("image") or None, d.get("video") or None, i), write=True)
     return jsonify(ok=1)
 
 @app.post("/api/admin/articles/<int:i>/<act>")

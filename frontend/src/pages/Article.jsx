@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getArticle } from '../services/api.js'
 import { timeAgo } from '../utils.js'
+import WatermarkedVideo from '../components/WatermarkedVideo.jsx'
 
 // The source shown to readers. (The admin page still shows the real source.)
 const SITE_SOURCE = 'Sky_N_News'
@@ -48,10 +49,14 @@ export default function Article() {
       <p className="meta">
         By {article.author} · {timeAgo(article.published_at)} · Source: {SITE_SOURCE}
       </p>
-      {article.image && (
-        <div className="article-media wm-image">
-          <img src={article.image} alt="" />
-        </div>
+      {article.video ? (
+        <WatermarkedVideo src={article.video} poster={article.image || undefined} />
+      ) : (
+        article.image && (
+          <div className="article-media wm-image">
+            <img src={article.image} alt="" />
+          </div>
+        )
       )}
       {paragraphs.map((p, i) => (
         <p key={i}>{p}</p>

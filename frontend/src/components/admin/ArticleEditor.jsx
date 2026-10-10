@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ARTICLE_CATEGORIES } from '../../constants.js'
 import ImagePreview from './ImagePreview.jsx'
-import ShareButtons from './ShareButtons.jsx'
+import MediaPicker from './MediaPicker.jsx'
 
 // One article card in the review desk. Keeps its own edits until saved.
 export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete }) {
@@ -11,6 +11,7 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
     category: article.category ?? ARTICLE_CATEGORIES[0],
     author: article.author ?? '',
     image: article.image ?? '',
+    video: article.video ?? '',
     body: article.body ?? '',
   })
 
@@ -63,6 +64,19 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
       </label>
       <ImagePreview url={form.image} />
 
+      <MediaPicker
+        onImage={(url, soft) => setForm((f) => (soft && f.image ? f : { ...f, image: url }))}
+        onVideo={(url) => setForm((f) => ({ ...f, video: url }))}
+      />
+      {form.video && (
+        <div style={{ marginBottom: 10 }}>
+          <video className="admin-preview" src={form.video} controls playsInline preload="metadata" />
+          <button type="button" className="danger" onClick={() => setForm((f) => ({ ...f, video: '' }))}>
+            Remove video
+          </button>
+        </div>
+      )}
+
       <label>
         Body
         <textarea name="body" value={form.body} onChange={update} />
@@ -75,10 +89,7 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
             Publish
           </button>
         ) : (
-          <>
-            <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
-            <ShareButtons article={article} />
-          </>
+          <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
         )}
         {status === 'draft' && (
           <button onClick={() => onChangeStatus(article.id, form, 'reject')}>Reject</button>
