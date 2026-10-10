@@ -4,6 +4,7 @@
     "http-proxy-middleware": "^3.0.7"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "npm --prefix frontend start",
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build"
   }
 }
