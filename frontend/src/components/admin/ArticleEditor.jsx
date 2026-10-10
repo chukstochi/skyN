@@ -4,7 +4,7 @@ import ImagePreview from './ImagePreview.jsx'
 import MediaPicker from './MediaPicker.jsx'
 
 // One article card in the review desk. Keeps its own edits until saved.
-export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete, onShare }) {
+export default function ArticleEditor({ article, status, onSave, onChangeStatus, onDelete }) {
   const [form, setForm] = useState({
     title: article.title ?? '',
     summary: article.summary ?? '',
@@ -17,6 +17,29 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
 
   function update(e) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+  }
+
+  const [shareOpen, setShareOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  // The /article/<slug> page carries the title + image preview that Facebook, X and WhatsApp show.
+  const link = `${window.location.origin}/article/${article.slug}`
+  const text = encodeURIComponent(form.title)
+  const url = encodeURIComponent(link)
+  const targets = [
+    ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${url}`],
+    ['X', `https://twitter.com/intent/tweet?text=${text}&url=${url}`],
+    ['WhatsApp', `https://wa.me/?text=${text}%20${url}`],
+    ['Telegram', `https://t.me/share/url?url=${url}&text=${text}`],
+  ]
+
+  function copyLink() {
+    const done = () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+    if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => window.prompt('Copy this link:', link))
+    else window.prompt('Copy this link:', link)
   }
 
   const hasSourceLink = /^https?:\/\//.test(article.source_url || '')
@@ -90,7 +113,7 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
           </button>
         ) : (
           <>
-            <button onClick={() => onShare(article.id)}>Share</button>
+            <button onClick={() => setShareOpen((o) => !o)}>{shareOpen ? 'Close share' : 'Share'}</button>
             <button onClick={() => onChangeStatus(article.id, form, 'draft')}>Unpublish</button>
           </>
         )}
@@ -101,6 +124,17 @@ export default function ArticleEditor({ article, status, onSave, onChangeStatus,
           Delete
         </button>
       </div>
+
+      {status === 'published' && shareOpen && (
+        <div className="admin-bar">
+          {targets.map(([name, href]) => (
+            <button key={name} onClick={() => window.open(href, '_blank', 'noopener,noreferrer,width=640,height=560')}>
+              {name}
+            </button>
+          ))}
+          <button onClick={copyLink}>{copied ? 'Copied!' : 'Copy link'}</button>
+        </div>
+      )}
     </div>
   )
 }
