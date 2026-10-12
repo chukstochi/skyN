@@ -165,7 +165,8 @@ def a_act(i, act):
 @app.delete("/api/admin/articles/<int:i>")
 @admin
 def a_del(i):
-    db.q("DELETE FROM articles WHERE id=?", (i,), write=True); return jsonify(ok=1)
+    # Keep the row, marked deleted, so the fetcher still recognises the story and never adds it again
+    db.q("UPDATE articles SET status='deleted',published_at=NULL WHERE id=?", (i,), write=True); return jsonify(ok=1)
 
 @app.get("/api/admin/sources")
 @admin
